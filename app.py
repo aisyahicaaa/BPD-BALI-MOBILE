@@ -1,6 +1,7 @@
 import streamlit as st
 import pickle
-from preprocessing import preprocessing
+from preprocessing import preprocess_text
+
 
 # ======================================
 # KONFIGURASI HALAMAN
@@ -10,6 +11,7 @@ st.set_page_config(
     page_icon="🏦",
     layout="centered"
 )
+
 
 # ======================================
 # CSS TAMPILAN BPD BALI
@@ -27,15 +29,14 @@ st.markdown("""
     padding-bottom: 40px;
 }
 
-/* Logo */
+
 [data-testid="stImage"] {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0 auto;
 }
 
-/* Text Area */
+
 .stTextArea textarea {
     background: white !important;
     color: black !important;
@@ -44,8 +45,9 @@ st.markdown("""
     padding: 12px !important;
 }
 
-/* Tombol */
+
 .stButton > button {
+
     width: 100%;
     height: 50px;
     background: white !important;
@@ -54,20 +56,20 @@ st.markdown("""
     font-weight: bold !important;
     border-radius: 8px !important;
     border: none !important;
+
 }
+
 
 .stButton > button:hover {
+
     background: #F2F2F2 !important;
     color: #0B6B3A !important;
-}
 
-/* Warning dan hasil */
-.stAlert {
-    border-radius: 10px;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ======================================
@@ -88,14 +90,17 @@ def load_models():
     return vectorizer, chi_selector, model
 
 
+
 try:
+
     vectorizer, chi_selector, model = load_models()
 
 except FileNotFoundError:
+
     st.error(
-        "File model tidak ditemukan. "
-        "Pastikan file .pkl berada dalam folder yang sama dengan app.py."
+        "File model tidak ditemukan. Pastikan file .pkl berada satu folder dengan app.py"
     )
+
     st.stop()
 
 
@@ -107,16 +112,22 @@ except FileNotFoundError:
 st.container(height=45, border=False)
 
 
-kolom1, kolom2, kolom3 = st.columns([1.6, 1, 1.6])
+kiri, tengah, kanan = st.columns([1.6, 1, 1.6])
 
-with kolom2:
+
+with tengah:
+
     st.image(
         "logo-bank-bpd-bali.png",
         use_container_width=True
     )
 
 
-# Judul
+
+# ======================================
+# JUDUL
+# ======================================
+
 st.markdown("""
 <h1 style="
 text-align:center;
@@ -124,15 +135,13 @@ color:white;
 font-size:38px;
 font-weight:bold;
 margin-top:-20px;
-margin-bottom:0px;
-line-height:1;">
+margin-bottom:0px;">
 Analisis Sentimen
 </h1>
 """, unsafe_allow_html=True)
 
 
 
-# Subtitle
 st.markdown("""
 <p style="
 text-align:center;
@@ -161,6 +170,7 @@ Masukkan Ulasan
 """, unsafe_allow_html=True)
 
 
+
 ulasan = st.text_area(
     "",
     height=150,
@@ -171,52 +181,57 @@ ulasan = st.text_area(
 
 
 # ======================================
-# PREDIKSI SENTIMEN
+# ANALISIS SENTIMEN
 # ======================================
-
-st.markdown(
-    "<div style='margin-top:10px'></div>",
-    unsafe_allow_html=True
-)
-
 
 if st.button("🔍 Analisis Sentimen"):
 
+
     if ulasan.strip() == "":
-        st.warning("Masukkan ulasan terlebih dahulu.")
+
+        st.warning(
+            "Masukkan ulasan terlebih dahulu."
+        )
+
 
     else:
 
         # preprocessing
-        hasil_preprocessing = preprocessing(ulasan)
+        hasil = preprocess_text(ulasan)
 
 
-        # vectorisasi
-        hasil_vector = vectorizer.transform(
-            [hasil_preprocessing]
+        # ubah teks menjadi fitur
+        vector = vectorizer.transform(
+            [hasil]
         )
 
 
-        # seleksi fitur chi-square
-        hasil_vector = chi_selector.transform(
-            hasil_vector
+        # seleksi fitur Chi-Square
+        vector = chi_selector.transform(
+            vector
         )
 
 
-        # prediksi
-        hasil_prediksi = model.predict(
-            hasil_vector
+        # prediksi model
+        prediksi = model.predict(
+            vector
         )[0]
 
 
-        st.markdown("<br>", unsafe_allow_html=True)
+
+        st.markdown(
+            "<br>",
+            unsafe_allow_html=True
+        )
 
 
-        if hasil_prediksi == 1:
+
+        if prediksi == 1:
 
             st.success(
                 "😊 Sentimen Terdeteksi: POSITIF"
             )
+
 
         else:
 
@@ -225,10 +240,9 @@ if st.button("🔍 Analisis Sentimen"):
             )
 
 
-        # tampilkan preprocessing
+
         with st.expander(
             "Lihat Hasil Preprocessing"
         ):
-            st.write(
-                hasil_preprocessing
-            )
+
+            st.write(hasil)
