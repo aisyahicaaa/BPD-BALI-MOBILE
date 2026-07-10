@@ -2,6 +2,7 @@ import streamlit as st
 import pickle
 from preprocessing import preprocessing
 
+
 # ======================================
 # KONFIGURASI HALAMAN
 # ======================================
@@ -11,24 +12,24 @@ st.set_page_config(
     layout="centered"
 )
 
+
 # ======================================
-# REFINEMENT CSS (SUPER RAPAT & PADAT)
+# CSS TAMPILAN BPD BALI
 # ======================================
 st.markdown("""
 <style>
-/* Background Full Hijau BPD Bali */
+
 .stApp {
     background-color: #0B6B3A;
 }
 
-/* Mengatur container utama */
 .block-container {
     max-width: 680px;
-    padding-top: 0px !important; 
+    padding-top: 0px !important;
     padding-bottom: 40px;
 }
 
-/* Memastikan gambar/logo di dalam kolom otomatis centering */
+
 [data-testid="stImage"] {
     display: flex;
     justify-content: center;
@@ -36,7 +37,7 @@ st.markdown("""
     margin: 0 auto;
 }
 
-/* Merapikan Text Area bawaan */
+
 .stTextArea textarea {
     background: white !important;
     color: black !important;
@@ -45,8 +46,9 @@ st.markdown("""
     padding: 12px !important;
 }
 
-/* Merapikan Tombol Analisis */
+
 .stButton > button {
+
     width: 100%;
     height: 50px;
     background: white !important;
@@ -55,87 +57,121 @@ st.markdown("""
     font-weight: bold !important;
     border: none !important;
     border-radius: 8px !important;
-    transition: all 0.2s ease;
+
 }
 
+
 .stButton > button:hover {
+
     background: #F2F2F2 !important;
     color: #0B6B3A !important;
-    transform: translateY(-1px);
+
 }
+
 </style>
 """, unsafe_allow_html=True)
+
+
 
 # ======================================
 # LOAD MODEL
 # ======================================
 @st.cache_resource
 def load_models():
+
     with open("vectorizer.pkl", "rb") as file:
-        vec = pickle.load(file)
+        vectorizer = pickle.load(file)
+
     with open("chi_selector.pkl", "rb") as file:
-        sel = pickle.load(file)
+        chi_selector = pickle.load(file)
+
     with open("model_naive_bayes.pkl", "rb") as file:
-        mdl = pickle.load(file)
-    return vec, sel, mdl
+        model = pickle.load(file)
+
+    return vectorizer, chi_selector, model
+
+
 
 try:
+
     vectorizer, chi_selector, model = load_models()
+
 except FileNotFoundError:
-    st.error("Model (.pkl) tidak ditemukan, pastikan file berada di folder yang sama.")
+
+    st.error(
+        "File model (.pkl) tidak ditemukan. "
+        "Pastikan semua file berada dalam folder yang sama."
+    )
+    st.stop()
+
+
 
 # ======================================
-# HEADER & LOGO
+# HEADER LOGO
 # ======================================
 
-# Container kosong menjaga jarak atas browser agar logo tidak kepotong
 st.container(height=45, border=False)
 
-# Mengunci posisi logo di tengah
-kiri, tengah, kanan = st.columns([1.6, 1, 1.6]) 
-with tengah:
-    st.image("logo-bank-bpd-bali.png", use_container_width=True)
 
-# Teks Judul Utama (Menempel rapat di bawah logo)
+kiri, tengah, kanan = st.columns([1.6, 1, 1.6])
+
+
+with tengah:
+
+    st.image(
+        "logo-bank-bpd-bali.png",
+        use_container_width=True
+    )
+
+
+
+# ======================================
+# JUDUL
+# ======================================
+
 st.markdown("""
 <h1 style="
-    text-align: center;
-    color: white;
-    font-size: 38px;
-    font-weight: bold;
-    margin-top: -20px; 
-    margin-bottom: 0px;
-    line-height: 1.0;
-    letter-spacing: -0.5px;">
-    Analisis Sentimen
+text-align:center;
+color:white;
+font-size:38px;
+font-weight:bold;
+margin-top:-20px;
+margin-bottom:0px;
+line-height:1;">
+Analisis Sentimen
 </h1>
 """, unsafe_allow_html=True)
 
-# Teks Sub-judul (Diberi margin-top minus agar menempel sangat dekat dengan judul atasnya)
+
+
 st.markdown("""
 <p style="
-    text-align: center;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 18px;
-    margin-top: -3px; 
-    margin-bottom: 20px;">
-    Ulasan Aplikasi BPD Bali Mobile
+text-align:center;
+color:rgba(255,255,255,0.9);
+font-size:18px;
+margin-top:-3px;
+margin-bottom:20px;">
+Ulasan Aplikasi BPD Bali Mobile
 </p>
 """, unsafe_allow_html=True)
 
+
+
 # ======================================
-# INPUT USER
+# INPUT ULASAN
 # ======================================
+
 st.markdown("""
 <p style="
-    font-size: 18px;
-    font-weight: bold;
-    color: white;
-    margin-top: 0px;
-    margin-bottom: 8px;">
-    Masukkan Ulasan
+font-size:18px;
+font-weight:bold;
+color:white;
+margin-bottom:8px;">
+Masukkan Ulasan
 </p>
 """, unsafe_allow_html=True)
+
+
 
 ulasan = st.text_area(
     "",
@@ -144,26 +180,102 @@ ulasan = st.text_area(
     label_visibility="collapsed"
 )
 
-st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+
+st.markdown(
+    "<div style='margin-top:10px'></div>",
+    unsafe_allow_html=True
+)
+
+
 
 # ======================================
-# BUTTON & PROSES PREDIKSI
+# PREDIKSI SENTIMEN
 # ======================================
+
 if st.button("🔍 Analisis Sentimen"):
+
+
     if ulasan.strip() == "":
-        st.warning("Masukkan ulasan terlebih dahulu.")
+
+        st.warning(
+            "Masukkan ulasan terlebih dahulu."
+        )
+
+
     else:
+
+
+        # ==============================
+        # PREPROCESSING
+        # Cleaning
+        # Case Folding
+        # Tokenizing
+        # Normalisasi
+        # Stopword Removal
+        # Stemming
+        # ==============================
+
         hasil = preprocessing(ulasan)
-        vector = vectorizer.transform([hasil])
-        vector = chi_selector.transform(vector)
-        prediksi = model.predict(vector)[0]
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
+
+
+
+        # ==============================
+        # FEATURE EXTRACTION
+        # ==============================
+
+        vector = vectorizer.transform(
+            [hasil]
+        )
+
+
+
+        # ==============================
+        # CHI-SQUARE FEATURE SELECTION
+        # ==============================
+
+        vector = chi_selector.transform(
+            vector
+        )
+
+
+
+        # ==============================
+        # NAIVE BAYES PREDICTION
+        # ==============================
+
+        prediksi = model.predict(
+            vector
+        )[0]
+
+
+
+        st.markdown(
+            "<br>",
+            unsafe_allow_html=True
+        )
+
+
+
         if prediksi == 1:
-            st.success("😊 Sentimen Terdeteksi: POSITIF")
+
+            st.success(
+                "😊 Sentimen Terdeteksi: POSITIF"
+            )
+
+
         else:
-            st.error("😞 Sentimen Terdeteksi: NEGATIF")
-            
-        with st.expander("Lihat Hasil Preprocessing"):
+
+            st.error(
+                "😞 Sentimen Terdeteksi: NEGATIF"
+            )
+
+
+
+        # Menampilkan hasil preprocessing
+
+        with st.expander(
+            "Lihat Hasil Preprocessing"
+        ):
+
             st.write(hasil)
