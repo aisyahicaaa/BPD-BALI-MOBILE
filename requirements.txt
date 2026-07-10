@@ -4,4 +4,6 @@ numpy
 scikit-learn
 nltk
 Sastrawi
-Pillow
+joblib
+matplotlib
+seaborn
