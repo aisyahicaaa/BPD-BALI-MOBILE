@@ -1,123 +1,169 @@
 import streamlit as st
 import pickle
-from preprocessing import preprocess_text
+from preprocessing import preprocessing
 
-# ============================
-# LOAD MODEL
-# ============================
-
-with open("vectorizer.pkl", "rb") as file:
-    vectorizer = pickle.load(file)
-
-with open("chi_selector.pkl", "rb") as file:
-    selector = pickle.load(file)
-
-with open("model_naive_bayes.pkl", "rb") as file:
-    model = pickle.load(file)
-
-# ============================
+# ======================================
 # KONFIGURASI HALAMAN
-# ============================
-
+# ======================================
 st.set_page_config(
-    page_title="Analisis Sentimen BPD Bali Mobile",
-    page_icon="💬",
+    page_title="Analisis Sentimen BPD Bali",
+    page_icon="🏦",
     layout="centered"
 )
 
-# ============================
-# CSS
-# ============================
-
+# ======================================
+# REFINEMENT CSS (SUPER RAPAT & PADAT)
+# ======================================
 st.markdown("""
 <style>
-
-.main{
-    background:#f7f7f7;
+/* Background Full Hijau BPD Bali */
+.stApp {
+    background-color: #0B6B3A;
 }
 
-h1{
-    color:#0a8f3d;
-    text-align:center;
+/* Mengatur container utama */
+.block-container {
+    max-width: 680px;
+    padding-top: 0px !important; 
+    padding-bottom: 40px;
 }
 
-.stButton>button{
-    background:#0a8f3d;
-    color:white;
-    width:100%;
-    border-radius:8px;
-    height:45px;
-    font-size:17px;
+/* Memastikan gambar/logo di dalam kolom otomatis centering */
+[data-testid="stImage"] {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
 }
 
-textarea{
-    border-radius:10px;
+/* Merapikan Text Area bawaan */
+.stTextArea textarea {
+    background: white !important;
+    color: black !important;
+    font-size: 16px !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
 }
 
+/* Merapikan Tombol Analisis */
+.stButton > button {
+    width: 100%;
+    height: 50px;
+    background: white !important;
+    color: #0B6B3A !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    border: none !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: #F2F2F2 !important;
+    color: #0B6B3A !important;
+    transform: translateY(-1px);
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ============================
-# JUDUL
-# ============================
+# ======================================
+# LOAD MODEL
+# ======================================
+@st.cache_resource
+def load_models():
+    with open("vectorizer.pkl", "rb") as file:
+        vec = pickle.load(file)
+    with open("chi_selector.pkl", "rb") as file:
+        sel = pickle.load(file)
+    with open("model_naive_bayes.pkl", "rb") as file:
+        mdl = pickle.load(file)
+    return vec, sel, mdl
 
-st.title("Analisis Sentimen")
-st.subheader("Aplikasi BPD Bali Mobile")
+try:
+    vectorizer, chi_selector, model = load_models()
+except FileNotFoundError:
+    st.error("Model (.pkl) tidak ditemukan, pastikan file berada di folder yang sama.")
 
-st.write(
-    "Masukkan ulasan pengguna kemudian tekan tombol **Analisis Sentimen**."
+# ======================================
+# HEADER & LOGO
+# ======================================
+
+# Container kosong menjaga jarak atas browser agar logo tidak kepotong
+st.container(height=45, border=False)
+
+# Mengunci posisi logo di tengah
+kiri, tengah, kanan = st.columns([1.6, 1, 1.6]) 
+with tengah:
+    st.image("logo-bank-bpd-bali.png", use_container_width=True)
+
+# Teks Judul Utama (Menempel rapat di bawah logo)
+st.markdown("""
+<h1 style="
+    text-align: center;
+    color: white;
+    font-size: 38px;
+    font-weight: bold;
+    margin-top: -20px; 
+    margin-bottom: 0px;
+    line-height: 1.0;
+    letter-spacing: -0.5px;">
+    Analisis Sentimen
+</h1>
+""", unsafe_allow_html=True)
+
+# Teks Sub-judul (Diberi margin-top minus agar menempel sangat dekat dengan judul atasnya)
+st.markdown("""
+<p style="
+    text-align: center;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 18px;
+    margin-top: -3px; 
+    margin-bottom: 20px;">
+    Ulasan Aplikasi BPD Bali Mobile
+</p>
+""", unsafe_allow_html=True)
+
+# ======================================
+# INPUT USER
+# ======================================
+st.markdown("""
+<p style="
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    margin-top: 0px;
+    margin-bottom: 8px;">
+    Masukkan Ulasan
+</p>
+""", unsafe_allow_html=True)
+
+ulasan = st.text_area(
+    "",
+    height=150,
+    placeholder="Contoh: Aplikasi sangat membantu dan mudah digunakan.",
+    label_visibility="collapsed"
 )
 
-# ============================
-# INPUT
-# ============================
+st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
 
-text = st.text_area(
-    "Masukkan Ulasan",
-    height=180,
-    placeholder="Contoh : Aplikasi sangat membantu untuk transaksi."
-)
-
-# ============================
-# PREDIKSI
-# ============================
-
-if st.button("Analisis Sentimen"):
-
-    if text.strip()=="":
-
+# ======================================
+# BUTTON & PROSES PREDIKSI
+# ======================================
+if st.button("🔍 Analisis Sentimen"):
+    if ulasan.strip() == "":
         st.warning("Masukkan ulasan terlebih dahulu.")
-
     else:
-
-        clean = preprocess_text(text)
-
-        vector = vectorizer.transform([clean])
-
-        vector = selector.transform(vector)
-
-        prediction = model.predict(vector)[0]
-
-        probability = model.predict_proba(vector)
-
-        if prediction==1:
-
-            st.success("Sentimen : POSITIF 😊")
-
+        hasil = preprocessing(ulasan)
+        vector = vectorizer.transform([hasil])
+        vector = chi_selector.transform(vector)
+        prediksi = model.predict(vector)[0]
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if prediksi == 1:
+            st.success("😊 Sentimen Terdeteksi: POSITIF")
         else:
-
-            st.error("Sentimen : NEGATIF 😔")
-
-        st.write("### Hasil Preprocessing")
-
-        st.code(clean)
-
-        st.write("### Probabilitas")
-
-        st.write(
-            f"Negatif : {probability[0][0]*100:.2f}%"
-        )
-
-        st.write(
-            f"Positif : {probability[0][1]*100:.2f}%"
-        )
+            st.error("😞 Sentimen Terdeteksi: NEGATIF")
+            
+        with st.expander("Lihat Hasil Preprocessing"):
+            st.write(hasil)
